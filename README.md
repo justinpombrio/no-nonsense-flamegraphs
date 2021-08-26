@@ -5,8 +5,8 @@ If you need more features, look there. **
 
 ---
 
-1. Mark which functions you want to trace in your Rust code.
-2. Run your code. Flamegraph saved in `flamegraph.svg`. Bosh. Done.
+1. Mark which functions you want to trace in your Rust code with `outln!("label")`.
+2. Run your code, flamegraph will be saved in `flamegraph.svg`. Bosh. Done.
 
 This saves flame graphs, not flame charts. "But," you ask...
 
@@ -39,7 +39,7 @@ fn myExistingFunctionRelatedToKittens() {
 ```
 
 Then run your program, and a flame graph marked with your LABELs will be saved at `flamegraph.svg`
-in your repo root.
+in your repo root. The library will panic if it is unable to create the file.
 
 It's safe to trace pretty hot loops. The overhead of a call to `outln!` in `--release` mode is only
 about 70ns on my laptop.

@@ -1,23 +1,3 @@
-//! To declare a span:
-//! ```
-//! use no_nonsense_flamegraphs::outln;
-//!
-//! fn myExistingFunctionRelatedToKittens() {
-//!   outln!("kittens"); // measures the span from now until it's dropped
-//!   // existing kitten related functionality
-//! }
-//! ```
-//!
-//! To print a flame graph trace:
-//! ```
-//! use no_nonsense_flamegraphs::set_flame_graph_handler;
-//!
-//! set_flame_graph_handler(Box::new(|trace| {
-//!   let flamegraph: String = trace.as_flame_graph_input().unwrap();
-//!   println!("FLAMEGRAPH:\n{}", flamegraph);
-//! }));
-//! ```
-
 #![feature(once_cell)]
 
 mod vec_trie;
@@ -43,20 +23,19 @@ macro_rules! outln {
  * Global settings                                                           *
  *****************************************************************************/
 
-static FLAME_GRAPH_CALLBACK: SyncOnceCell<LoggingCallback> = SyncOnceCell::new();
+static CALLBACK: SyncOnceCell<Callback> = SyncOnceCell::new();
 
 /// A function to call whenever a flame graph trace is complete.
-pub type LoggingCallback = Box<dyn Fn(&FlameGraph) + Send + Sync>;
+pub type Callback = Box<dyn Fn(&FlameGraph) + Send + Sync>;
 
 /// Set the callback to invoke whenever a flame graph trace is complete.
 ///
 /// # Panics
 ///
-/// Panics if you call it more than once. Dont' do that.
-pub fn set_flame_graph_handler(handler: LoggingCallback) {
-    match FLAME_GRAPH_CALLBACK.set(handler) {
-        Ok(()) => (),
-        Err(_) => panic!("set_flame_graph_handler() called more than once"),
+/// Panics if you set the handler more than once. Don't do that.
+pub fn set_handler(handler: Callback) {
+    if CALLBACK.set(handler).is_err() {
+        panic!("no_nonsense_flamegraphs::set_handler called more than once");
     }
 }
 
@@ -66,6 +45,7 @@ pub fn set_flame_graph_handler(handler: LoggingCallback) {
 
 /// Measures the start & end of a span. The start is when it is constructed, the end is when it is
 /// dropped. You should not use this type directly; it is only public so that macros may use it.
+#[doc(hidden)]
 #[derive(Debug)]
 pub struct Span {
     index: Index,
@@ -151,10 +131,30 @@ impl FlameGraph {
         }
     }
 
-    fn finish_trace(&mut self) {
-        if let Some(callback) = FLAME_GRAPH_CALLBACK.get() {
-            callback(&self);
+    fn default_callback(&self) {
+        use inferno::flamegraph::{from_lines, Options, TextTruncateDirection};
+        use std::fs::File;
+
+        let mut options = Options::default();
+        // How on Earth is left-truncation the default? The elipses go on the right. This is
+        // _very_ well established.
+        options.text_truncate_direction = TextTruncateDirection::Right;
+        // We're measuring time in microseconds, not "samples" like in `perf`.
+        options.count_name = "μs".to_owned();
+
+        if let Some(flame_graph_data) = self.as_flame_graph_input() {
+            let mut file = File::create("flamegraph.svg").unwrap();
+            let _ = from_lines(&mut options, flame_graph_data.lines(), &mut file);
         }
+    }
+
+    fn finish_trace(&mut self) {
+        if let Some(callback) = CALLBACK.get() {
+            callback(self);
+        } else {
+            self.default_callback();
+        }
+
         self.trie.clear();
     }
 
@@ -167,18 +167,9 @@ impl FlameGraph {
         }
     }
 
-    /// The name of the outermost call in this trace.
-    pub fn outermost_call(&self) -> &'static str {
-        if let Some(root) = self.trie.root() {
-            root.key()
-        } else {
-            "Empty call stack"
-        }
-    }
-
     /// Turn this trace into input for a flame graph library. Returns `None` if the trace is empty,
     /// or if there was an error writing to a String (which seems exceedingly unlikely).
-    pub fn as_flame_graph_input(&self) -> Option<String> {
+    fn as_flame_graph_input(&self) -> Option<String> {
         let root = match self.trie.root() {
             None => return None,
             Some(root) => root,
@@ -269,7 +260,7 @@ fn test_tracing() {
     }
 
     static IT_RAN: AtomicBool = AtomicBool::new(false);
-    set_flame_graph_handler(Box::new(|traces: &FlameGraph| {
+    set_handler(Box::new(|traces: &FlameGraph| {
         let mut actual = String::new();
         let root = traces.trie.root().unwrap();
         write_flamegraph_for_testing(&mut actual, root).unwrap();
@@ -330,7 +321,7 @@ fn test_perf() {
         sum
     }
 
-    set_flame_graph_handler(Box::new(|traces: &FlameGraph| {
+    set_handler(Box::new(|traces: &FlameGraph| {
         println!(
             "Total tracing duration: {}ms",
             traces.total_duration().as_millis()
