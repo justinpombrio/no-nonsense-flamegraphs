@@ -4,12 +4,12 @@
 //!    [=== is_small (1 calls) ===]  [=== fib (2 calls) ===========]
 //! [=== fib (1 calls) ============================================]
 
-use no_nonsense_flamegraphs::outln;
+use no_nonsense_flamegraphs::span;
 
 fn main() {
-    // Expository purposes only. Don't ever `outln!` recursive functions!
+    // Expository purposes only. Don't ever `span!` recursive functions!
     fn fib(n: usize) -> usize {
-        outln!("fib");
+        span!("fib");
 
         if is_small(n) {
             n
@@ -19,7 +19,7 @@ fn main() {
     }
 
     fn is_small(n: usize) -> bool {
-        outln!("is_small");
+        span!("is_small");
 
         n <= 2
     }

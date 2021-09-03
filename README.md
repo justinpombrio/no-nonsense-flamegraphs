@@ -6,10 +6,10 @@ flame graph svg.
 To use it:
 
 1. Mark which functions (or other code blocks) you want to trace in your Rust code with
-   `outln!("LABEL")`.
+   `span!("LABEL")`.
 2. Run your program.
-3. A flamegraph will have been saved at `flamegraph.svg` in your crate root. View it to see what
-   fraction of its time your program spent in each `outln!`ed function, recursively.
+3. A flamegraph will have been saved at `flamegraph.svg` in the current directory.  View it to see
+   what fraction of its time your program spent in each `span!`ed function, recursively.
 
 ## What, _exactly_, is a flame graph?
 
@@ -30,24 +30,24 @@ called [flamegraph-rs](https://github.com/flamegraph-rs/flamegraph#systems-perfo
 
 ## How do I use this crate?
 
-It's really really simple. Mark each of the functions you want to trace with `outln!("LABEL")`:
+It's really really simple. Mark each of the functions you want to trace with `span!("LABEL")`:
 
-    use no_nonsense_flamegraphs::outln;
+    use no_nonsense_flamegraphs::span;
     
     fn myExistingFunctionRelatedToKittens() {
-      outln!("kittens"); // measures the span from now until it's dropped
+      span!("kittens"); // measures the span from now until it's dropped
       // existing kitten related functionality
     }
 
-More precisely, the `outln!` macro will measure the span of time from when it is called to when it
+More precisely, the `span!` macro will measure the span of time from when it is called to when it
 is dropped at a closing curly brace. Most often you'll want to put it as the first statement in a
 function call, but you can put it in any block you want to measure.
 
-Once the `outln!` calls in are place, run your program and a flame graph marked with your LABELs
+Once the `span!` calls in are place, run your program and a flame graph marked with your LABELs
 will be saved at `flamegraph.svg` in your repo root. The library will write to `stderr` if it is
 unable to create the file.
 
-It's safe to trace pretty hot loops. The overhead of a call to `outln!` in `--release` mode is only
+It's safe to trace pretty hot loops. The overhead of a call to `span!` in `--release` mode is only
 about 70ns on my laptop. However, _do not trace deeply recursive functions_, as they are liable to
 make large and unweildy flame graphs, and possibly even cause errors (printed to `stderr`) while
 this library tries to convert the trace to an SVG.

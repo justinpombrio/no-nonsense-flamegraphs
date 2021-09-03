@@ -3,21 +3,21 @@
 //! A big/complex flame graph had the following performance:
 //! - 1ms to construct a very large flame graph. (800 lines, avg. of 15 calls, 60kb.) As far as I
 //!   can tell, this time is spent formatting strings.
-//! - 70ns/call to outln!, assuming that 100% of time was spent in tracing. This is for 5.4*10^6
-//!   calls to outln!.
+//! - 70ns/call to span!, assuming that 100% of time was spent in tracing. This is for 5.4*10^6
+//!   calls to span!.
 //!
 //! A reasonably sized flame graph (60 lines) had the following performance:
 //! - 120μs to construct a reasonably sized flame graph (60 lines, average line has 15 calls).
-//! - 70ns/call to outln!, assuming that 100% of time was spent in tracing. This is for 5.4*10^6
-//!   calls to outln!.
+//! - 70ns/call to span!, assuming that 100% of time was spent in tracing. This is for 5.4*10^6
+//!   calls to span!.
 
-use no_nonsense_flamegraphs::outln;
+use no_nonsense_flamegraphs::span;
 use std::time::Instant;
 
 fn main() {
-    // Expository purposes only. Don't ever `outln!` recursive functions!
+    // Expository purposes only. Don't ever `span!` recursive functions!
     fn fib(n: usize) -> usize {
-        outln!("fib");
+        span!("fib");
         if is_small(n) {
             2
         } else {
@@ -26,18 +26,18 @@ fn main() {
     }
 
     fn is_small(n: usize) -> bool {
-        outln!("is_small");
+        span!("is_small");
         n <= 2
     }
 
     fn fan(n: usize) -> usize {
         let name: &'static str = Box::leak(Box::new(format!("f{}", n)));
-        outln!(name);
+        span!(name);
         fib(n) + 1
     }
 
     fn fanout(n: usize) -> usize {
-        outln!("fanout");
+        span!("fanout");
         let mut sum = 1;
         for i in 0..n {
             sum += fan(i);
